@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora MDF Láser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: banco de trabajo — columna de entradas a la izquierda, panel de resultados fijo a la derecha; abajo tabla por tamaño y productos guardados */
+:root{
+  --bg:#F2F3EF; --surface:#FFFFFF; --ink:#1B1E19; --muted:#5E6459; --line:#D9DCD3;
+  --accent:#2747C8; --accent-soft:#E6EAFB; --mdf:#CDAE84; --mdf-edge:#A9875D;
+  --good:#1F7A4D; --warn:#A85A00;
+  --f-display:"Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141613; --surface:#1D201B; --ink:#ECEEE8; --muted:#A2A89C; --line:#33372F;
+  --accent:#8EA2FF; --accent-soft:#232A4A; --mdf:#9C7F58; --mdf-edge:#C4A275;
+  --good:#5CC38D; --warn:#E9A04B; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#141613; --surface:#1D201B; --ink:#ECEEE8; --muted:#A2A89C; --line:#33372F;
+  --accent:#8EA2FF; --accent-soft:#232A4A; --mdf:#9C7F58; --mdf-edge:#C4A275;
+  --good:#5CC38D; --warn:#E9A04B; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:22px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.tag{font-family:var(--f-mono);font-size:12px;color:var(--muted);border:1px dashed var(--line);padding:4px 8px;border-radius:4px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+section.block{border-top:2px solid var(--ink);padding-top:12px;margin-bottom:26px}
+.block h2{font-family:var(--f-display);font-size:19px;font-weight:600;margin:0 0 4px}
+.block .hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px 14px}
+label.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+label.f span{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500}
+.inp{display:flex;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.inp input,.inp select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:500 15px var(--f-mono);padding:9px 10px;outline:none}
+.inp em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--muted);padding:0 10px;white-space:nowrap}
+.inp em.pre{padding-right:0}
+input.name{font-family:var(--f-body)}
+
+.sheetrow{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:18px;align-items:center;margin-top:14px}
+@media (max-width:560px){.sheetrow{grid-template-columns:minmax(0,1fr)}}
+.sheet svg{width:100%;height:auto;display:block}
+.sheetinfo{font-size:14px;display:grid;gap:4px}
+.sheetinfo b{font-family:var(--f-mono);font-weight:500}
+
+.ins-list{display:grid;gap:8px}
+.ins-row{display:grid;grid-template-columns:minmax(0,1fr) 150px 36px;gap:8px}
+@media (max-width:480px){.ins-row{grid-template-columns:minmax(0,1fr) 120px 36px}}
+.iconbtn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:6px;cursor:pointer;font-size:18px;line-height:1}
+.iconbtn:hover{color:var(--ink);border-color:var(--ink)}
+.btn{font:600 14px var(--f-body);border-radius:6px;padding:9px 14px;cursor:pointer;border:1px solid var(--ink);background:transparent;color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:hover{filter:brightness(1.08)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+input[type=range]{width:100%;accent-color:var(--accent)}
+.margin-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.margin-head b{font:600 28px var(--f-display)}
+
+/* panel de resultados */
+.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+@media (max-width:900px){.panel{position:static}}
+.panel .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.price{font:700 clamp(34px,5vw,44px)/1.05 var(--f-display);margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.price-sub{color:var(--muted);font-size:13px}
+.m2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;padding:12px;background:var(--accent-soft);border-radius:8px}
+.m2 div{display:flex;flex-direction:column}
+.m2 small{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.m2 strong{font:600 19px var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{display:flex;height:12px;border-radius:3px;overflow:hidden;margin:6px 0 10px;background:var(--line)}
+.bar i{display:block;height:100%}
+dl.break{margin:0;display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:14px}
+dl.break dt{display:contents}
+dl.break .sw{width:10px;height:10px;border-radius:2px}
+dl.break dd{margin:0;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+dl.break .tot{font-weight:600;border-top:1px solid var(--line);padding-top:6px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:4px 0}
+.kv span:last-child{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid currentColor}
+.pill.ok{color:var(--good)} .pill.low{color:var(--warn)}
+.sep{border:0;border-top:1px solid var(--line);margin:12px 0}
+.toggle{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+
+/* tablas */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.n{font-family:var(--f-body);font-weight:500}
+tr:last-child td{border-bottom:0}
+tr.clickable{cursor:pointer} tr.clickable:hover td{background:var(--accent-soft)}
+.empty{color:var(--muted);padding:16px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0;max-width:70ch}
+.del{font:500 12px var(--f-body);background:none;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:3px 8px;cursor:pointer}
+.del.armed{color:var(--surface);background:var(--warn);border-color:var(--warn)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s ease}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Calculadora <span>MDF Láser</span></h1>
+      <p class="sub">Costo, margen y precio por pieza y por metro cuadrado. Los valores que ves al abrir son de ejemplo: reemplázalos por los tuyos.</p>
+    </div>
+    <span class="tag">CLP · m² · IVA 19%</span>
+  </header>
+
+  <div class="grid">
+    <main>
+      <section class="block">
+        <h2>Plancha de MDF</h2>
+        <p class="hint">Lo que pagas por la plancha y su medida. De aquí sale tu costo por m².</p>
+        <div class="fields">
+          <label class="f"><span>Precio plancha</span><div class="inp"><em class="pre">$</em><input id="pPlancha" type="number" min="0" step="10" value="11990"></div></label>
+          <label class="f"><span>Ancho plancha</span><div class="inp"><input id="wPlancha" type="number" min="1" step="0.1" value="122"><em>cm</em></div></label>
+          <label class="f"><span>Alto plancha</span><div class="inp"><input id="hPlancha" type="number" min="1" step="0.1" value="244"><em>cm</em></div></label>
+          <label class="f"><span>Espesor</span><div class="inp"><select id="espesor"><option>3 mm</option><option>5,5 mm</option><option>9 mm</option><option>12 mm</option><option>15 mm</option></select></div></label>
+          <label class="f"><span>Merma</span><div class="inp"><input id="merma" type="number" min="0" max="80" step="1" value="10"><em>%</em></div></label>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Pieza</h2>
+        <p class="hint">Medida del rectángulo de MDF que ocupa una unidad del producto.</p>
+        <div class="fields">
+          <label class="f" style="grid-column:span 2"><span>Nombre del producto</span><div class="inp"><input id="nombre" class="name" type="text" value="Letrero 30 × 20 cm (ejemplo)"></div></label>
+          <label class="f"><span>Ancho pieza</span><div class="inp"><input id="wPieza" type="number" min="0.1" step="0.1" value="30"><em>cm</em></div></label>
+          <label class="f"><span>Alto pieza</span><div class="inp"><input id="hPieza" type="number" min="0.1" step="0.1" value="20"><em>cm</em></div></label>
+          <label class="f"><span>Separación corte</span><div class="inp"><input id="gap" type="number" min="0" step="0.5" value="3"><em>mm</em></div></label>
+          <label class="f"><span>Cantidad pedido</span><div class="inp"><input id="qty" type="number" min="1" step="1" value="10"><em>un.</em></div></label>
+        </div>
+        <div class="sheetrow">
+          <div class="sheet" id="sheet" aria-label="Distribución de piezas en la plancha"></div>
+          <div class="sheetinfo" id="sheetinfo"></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Máquina y mano de obra</h2>
+        <p class="hint">Tiempo por unidad. El costo hora de máquina incluye luz, mantención y desgaste del tubo.</p>
+        <div class="fields">
+          <label class="f"><span>Tiempo láser</span><div class="inp"><input id="minLaser" type="number" min="0" step="0.5" value="6"><em>min/un.</em></div></label>
+          <label class="f"><span>Costo hora láser</span><div class="inp"><em class="pre">$</em><input id="hLaser" type="number" min="0" step="100" value="6000"><em>/h</em></div></label>
+          <label class="f"><span>Mano de obra</span><div class="inp"><input id="minMO" type="number" min="0" step="1" value="10"><em>min/un.</em></div></label>
+          <label class="f"><span>Valor hora trabajo</span><div class="inp"><em class="pre">$</em><input id="hMO" type="number" min="0" step="100" value="5000"><em>/h</em></div></label>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Insumos y terminaciones</h2>
+        <p class="hint">Costo por unidad: pintura, barniz, pegamento, embalaje, etiquetas.</p>
+        <div class="ins-list" id="insList"></div>
+        <div class="row-actions"><button class="btn" id="addIns" type="button">+ Agregar insumo</button></div>
+      </section>
+
+      <section class="block">
+        <div class="margin-head"><h2>Margen deseado</h2><b id="margenLbl">45%</b></div>
+        <p class="hint">Porcentaje del precio de venta que queda como ganancia.</p>
+        <input id="margen" type="range" min="5" max="80" step="1" value="45" aria-label="Margen deseado">
+        <div class="fields" style="margin-top:12px">
+          <label class="f"><span>Redondear precio a</span><div class="inp"><select id="redondeo"><option value="1">Sin redondeo</option><option value="10">$10</option><option value="100" selected>$100</option><option value="500">$500</option><option value="1000">$1.000</option></select></div></label>
+        </div>
+      </section>
+    </main>
+
+    <aside class="panel" aria-live="polite">
+      <div class="eyebrow">Precio de venta por unidad</div>
+      <div class="price" id="rPrecio">$0</div>
+      <div class="price-sub" id="rPrecioSub"></div>
+      <label class="toggle" style="margin-top:8px"><input type="checkbox" id="iva"> Mostrar precios con IVA (19%)</label>
+
+      <div class="m2">
+        <div><small>Costo por m²</small><strong id="rCostoM2">$0</strong></div>
+        <div><small>Precio por m²</small><strong id="rPrecioM2">$0</strong></div>
+      </div>
+
+      <div class="eyebrow">Costo por unidad</div>
+      <div class="bar" id="bar"></div>
+      <dl class="break" id="break"></dl>
+      <hr class="sep">
+      <div class="kv"><span>Ganancia por unidad</span><span id="rGan">$0</span></div>
+      <div class="kv"><span>Recargo sobre costo</span><span id="rMarkup">0%</span></div>
+      <div class="kv"><span>Pedido (<span id="rQty">0</span> un.)</span><span id="rLote">$0</span></div>
+      <div class="kv"><span>Ganancia del pedido</span><span id="rLoteGan">$0</span></div>
+      <div class="kv"><span>Estado</span><span id="rEstado"></span></div>
+      <hr class="sep">
+      <div class="row-actions" style="margin-top:0">
+        <button class="btn primary" id="guardar" type="button">Guardar producto</button>
+        <button class="btn" id="copiar" type="button">Copiar resumen</button>
+      </div>
+    </aside>
+  </div>
+
+  <section class="block" style="margin-top:12px">
+    <h2>Precios por tamaño</h2>
+    <p class="hint">Usa el costo y precio por m² de este producto para cotizar otras medidas rápido.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Medida</th><th>m²</th><th>Costo</th><th>Precio</th><th>Ganancia</th></tr></thead>
+      <tbody id="tSizes"></tbody>
+    </table></div>
+    <p class="note">Es una estimación: supone que el tiempo de láser, la mano de obra y los insumos crecen en proporción a la superficie. Para piezas con mucho grabado o armado, cotízalas por separado arriba.</p>
+  </section>
+
+  <section class="block">
+    <h2>Productos guardados</h2>
+    <p class="hint">Toca una fila para cargarla en la calculadora. Se guardan en este navegador.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Producto</th><th>Medida</th><th>Costo</th><th>Precio</th><th>Precio m²</th><th>Margen</th><th></th></tr></thead>
+      <tbody id="tSaved"></tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const fmt = n => isFinite(n) ? new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Math.round(n)) : '—';
+  const num = (n,d=2) => new Intl.NumberFormat('es-CL',{maximumFractionDigits:d}).format(n);
+  const v = id => { const x = parseFloat($(id).value); return isFinite(x) ? x : 0; };
+  const KEY='mdf-calc-v1';
+  const COLORS = ['var(--mdf-edge)','var(--accent)','var(--good)','var(--warn)'];
+  const FIELDS = ['pPlancha','wPlancha','hPlancha','espesor','merma','nombre','wPieza','hPieza','gap','qty','minLaser','hLaser','minMO','hMO','margen','redondeo'];
+  let insumos = [{n:'Pintura / barniz',c:300},{n:'Embalaje',c:250}];
+  let saved = [];
+  let last = null;
+
+  const store = {
+    load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } },
+    save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+  };
+
+  function snapshot(){
+    const o={}; FIELDS.forEach(f=>o[f]=$(f).value); o.insumos=insumos.map(i=>({...i})); o.iva=$('iva').checked; return o;
+  }
+  function apply(o){
+    if(!o) return;
+    FIELDS.forEach(f=>{ if(o[f]!==undefined) $(f).value=o[f]; });
+    if(Array.isArray(o.insumos)) insumos=o.insumos.map(i=>({n:String(i.n||''),c:+i.c||0}));
+    if(typeof o.iva==='boolean') $('iva').checked=o.iva;
+    renderIns();
+  }
+
+  function renderIns(){
+    const box=$('insList'); box.innerHTML='';
+    insumos.forEach((it,i)=>{
+      const row=document.createElement('div'); row.className='ins-row';
+      row.innerHTML=`<div class="inp"><input class="name" id="insN${i}" type="text" aria-label="Insumo"></div>
+        <div class="inp"><em class="pre">$</em><input id="insC${i}" type="number" min="0" step="10" aria-label="Costo por unidad"></div>
+        <button class="iconbtn" type="button" aria-label="Quitar insumo">×</button>`;
+      row.querySelector('.name').value=it.n;
+      row.querySelector('[type=number]').value=it.c;
+      row.querySelector('.name').addEventListener('input',e=>{insumos[i].n=e.target.value;persist();});
+      row.querySelector('[type=number]').addEventListener('input',e=>{insumos[i].c=parseFloat(e.target.value)||0;calc();});
+      row.querySelector('button').addEventListener('click',()=>{insumos.splice(i,1);renderIns();calc();});
+      box.appendChild(row);
+    });
+  }
+
+  function fit(W,H,w,h,g){ // mm
+    const c=Math.floor((W+g)/(w+g)), r=Math.floor((H+g)/(h+g));
+    return {c:Math.max(c,0),r:Math.max(r,0),n:Math.max(c,0)*Math.max(r,0)};
+  }
+
+  function calc(){
+    const W=v('wPlancha'),H=v('hPlancha'),w=v('wPieza'),h=v('hPieza');
+    const areaPl=W*H/10000, areaPz=w*h/10000;
+    const costoM2Mat = areaPl>0 ? v('pPlancha')/areaPl : 0;
+    const mat = areaPz*costoM2Mat*(1+v('merma')/100);
+    const laser = v('minLaser')/60*v('hLaser');
+    const mo = v('minMO')/60*v('hMO');
+    const ins = insumos.reduce((s,i)=>s+(+i.c||0),0);
+    const costo = mat+laser+mo+ins;
+    const m = Math.min(v('margen'),95)/100;
+    const r = parseFloat($('redondeo').value)||1;
+    const precioNeto = Math.ceil((costo/(1-m))/r)*r;
+    const ivaOn=$('iva').checked, k=ivaOn?1.19:1;
+    const gan = precioNeto-costo;
+    const margenReal = precioNeto>0 ? gan/precioNeto : 0;
+    const qty=Math.max(1,Math.round(v('qty')));
+    last={nombre:$('nombre').value.trim()||'Sin nombre',w,h,costo,precio:precioNeto,areaPz,margen:margenReal,costoM2Mat};
+
+    $('margenLbl').textContent=Math.round(m*100)+'%';
+    $('rPrecio').textContent=fmt(precioNeto*k);
+    $('rPrecioSub').textContent = ivaOn ? `Neto ${fmt(precioNeto)} + IVA ${fmt(precioNeto*0.19)}` : `Neto, sin IVA · con IVA: ${fmt(precioNeto*1.19)}`;
+    $('rCostoM2').textContent = areaPz>0 ? fmt(costo/areaPz) : '—';
+    $('rPrecioM2').textContent = areaPz>0 ? fmt(precioNeto*k/areaPz) : '—';
+
+    const parts=[['MDF ('+$('espesor').value+')',mat],['Láser',laser],['Mano de obra',mo],['Insumos',ins]];
+    $('bar').innerHTML = parts.map((p,i)=>`<i style="width:${costo>0?p[1]/costo*100:0}%;background:${COLORS[i]}"></i>`).join('');
+    $('break').innerHTML = parts.map((p,i)=>`<dt><span class="sw" style="background:${COLORS[i]}"></span><span>${p[0]}</span></dt><dd>${fmt(p[1])}</dd>`).join('')
+      + `<dt><span></span><span class="tot">Costo total</span></dt><dd class="tot">${fmt(costo)}</dd>`;
+
+    $('rGan').textContent=fmt(gan);
+    $('rMarkup').textContent = costo>0 ? num(gan/costo*100,0)+'%' : '—';
+    $('rQty').textContent=qty;
+    $('rLote').textContent=fmt(precioNeto*qty*k);
+    $('rLoteGan').textContent=fmt(gan*qty);
+    $('rEstado').innerHTML = margenReal>=0.3 ? '<span class="pill ok">Margen sano</span>' : '<span class="pill low">Margen bajo (&lt;30%)</span>';
+
+    // plancha
+    const g=v('gap'), Wm=W*10,Hm=H*10,wm=w*10,hm=h*10;
+    const a=fit(Wm,Hm,wm,hm,g), b=fit(Wm,Hm,hm,wm,g);
+    const best = b.n>a.n ? {...b,pw:hm,ph:wm,rot:true} : {...a,pw:wm,ph:hm,rot:false};
+    drawSheet(Wm,Hm,best,g);
+    const usado = areaPl>0 ? (best.n*areaPz)/areaPl*100 : 0;
+    const porPieza = best.n>0 ? v('pPlancha')/best.n : NaN;
+    const planchas = best.n>0 ? Math.ceil(qty/best.n) : NaN;
+    $('sheetinfo').innerHTML = `
+      <div>Costo MDF por m²: <b>${fmt(costoM2Mat)}</b></div>
+      <div>Caben <b>${best.n}</b> piezas por plancha${best.rot?' (girando la pieza)':''}</div>
+      <div>Aprovechamiento: <b>${num(usado,0)}%</b></div>
+      <div>Costo MDF real si usas la plancha completa: <b>${fmt(porPieza)}</b>/un.</div>
+      <div>Planchas para ${qty} un.: <b>${isFinite(planchas)?planchas:'—'}</b></div>`;
+
+    // tabla tamaños
+    const sizes=[[10,10],[15,15],[20,20],[30,20],[30,30],[40,30],[50,50],[60,40],[90,60],[122,61]];
+    const cM2 = areaPz>0?costo/areaPz:0;
+    $('tSizes').innerHTML = sizes.map(([sw,sh])=>{
+      const ar=sw*sh/10000, c=ar*cM2, p=Math.ceil((c/(1-m))/r)*r;
+      return `<tr><td class="n">${sw} × ${sh} cm</td><td>${num(ar,3)}</td><td>${fmt(c)}</td><td>${fmt(p*k)}</td><td>${fmt(p-c)}</td></tr>`;
+    }).join('');
+    persist();
+  }
+
+  function drawSheet(W,H,f,g){
+    const vbW=300, s=vbW/Math.max(W,H)*(W>=H?1:1), sw=W*s, sh=H*s;
+    // dibujar plancha horizontal
+    const rot = H>W; const PW=rot?H:W, PH=rot?W:H;
+    const sc=vbW/PW, vh=PH*sc;
+    let rects=''; const max=600; let k=0;
+    const cols=rot?f.r:f.c, rows=rot?f.c:f.r, pw=(rot?f.ph:f.pw), ph=(rot?f.pw:f.ph);
+    for(let i=0;i<rows && k<max;i++) for(let j=0;j<cols && k<max;j++,k++){
+      rects+=`<rect x="${(j*(pw+g))*sc+0.5}" y="${(i*(ph+g))*sc+0.5}" width="${Math.max(pw*sc-1,0.5)}" height="${Math.max(ph*sc-1,0.5)}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="0.8"/>`;
+    }
+    $('sheet').innerHTML=`<svg viewBox="-2 -2 ${vbW+4} ${vh+4}" role="img"><rect x="0" y="0" width="${vbW}" height="${vh}" fill="var(--mdf)" stroke="var(--mdf-edge)" stroke-width="1.5"/>${rects}</svg>`;
+  }
+
+  let pTimer; function persist(){ clearTimeout(pTimer); pTimer=setTimeout(()=>store.save({cur:snapshot(),saved}),250); }
+
+  function renderSaved(){
+    const tb=$('tSaved');
+    if(!saved.length){ tb.innerHTML='<tr><td colspan="7" class="empty">Aún no guardas productos. Ajusta la calculadora y toca «Guardar producto».</td></tr>'; return; }
+    tb.innerHTML='';
+    saved.forEach((p,i)=>{
+      const tr=document.createElement('tr'); tr.className='clickable';
+      tr.innerHTML=`<td class="n"></td><td>${num(p.w,1)} × ${num(p.h,1)} cm</td><td>${fmt(p.costo)}</td><td>${fmt(p.precio)}</td><td>${p.areaPz>0?fmt(p.precio/p.areaPz):'—'}</td><td>${num(p.margen*100,0)}%</td><td><button class="del" type="button">Eliminar</button></td>`;
+      tr.firstChild.textContent=p.nombre;
+      tr.addEventListener('click',e=>{ if(e.target.closest('.del')) return; apply(p.data); calc(); toast('Cargado: '+p.nombre); window.scrollTo({top:0,behavior:'smooth'}); });
+      const del=tr.querySelector('.del');
+      del.addEventListener('click',()=>{
+        if(!del.classList.contains('armed')){ del.classList.add('armed'); del.textContent='¿Seguro?'; setTimeout(()=>{del.classList.remove('armed');del.textContent='Eliminar';},3000); return; }
+        saved.splice(i,1); renderSaved(); persist(); toast('Producto eliminado');
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  let tt; function toast(msg){ let t=document.querySelector('.toast'); if(!t){t=document.createElement('div');t.className='toast';t.setAttribute('role','status');document.body.appendChild(t);} t.textContent=msg; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true,2200); }
+
+  $('guardar').addEventListener('click',()=>{
+    if(!last) return;
+    const entry={...last,data:snapshot()};
+    const i=saved.findIndex(s=>s.nombre===entry.nombre);
+    if(i>=0){ saved[i]=entry; toast('Actualizado: '+entry.nombre); } else { saved.unshift(entry); toast('Guardado: '+entry.nombre); }
+    renderSaved(); persist();
+  });
+  $('copiar').addEventListener('click',()=>{
+    if(!last) return;
+    const ivaOn=$('iva').checked;
+    const txt=`${last.nombre}\nMedida: ${num(last.w,1)} × ${num(last.h,1)} cm (${num(last.areaPz,3)} m²)\nCosto: ${fmt(last.costo)}\nPrecio neto: ${fmt(last.precio)}\nPrecio con IVA: ${fmt(last.precio*1.19)}\nPrecio por m²: ${fmt(last.precio*(ivaOn?1.19:1)/last.areaPz)}${ivaOn?' (con IVA)':' (neto)'}\nMargen: ${num(last.margen*100,0)}%`;
+    const done=()=>toast('Resumen copiado');
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>toast('No se pudo copiar en esta vista')); } else toast('No se pudo copiar en esta vista');
+  });
+  $('addIns').addEventListener('click',()=>{ insumos.push({n:'Nuevo insumo',c:0}); renderIns(); calc(); });
+  FIELDS.concat(['iva']).forEach(f=>{ $(f).addEventListener('input',calc); $(f).addEventListener('change',calc); });
+
+  const st=store.load();
+  if(st){ if(st.cur) apply(st.cur); if(Array.isArray(st.saved)) saved=st.saved; }
+  renderIns(); renderSaved(); calc();
+})();
+</script>
+
+</body>
+</html>
